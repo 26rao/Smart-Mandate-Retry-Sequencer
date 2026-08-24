@@ -89,6 +89,9 @@ class Decision(BaseModel):
     remaining_attempts: int
     confidence: float
     is_safe: bool = True
+    policy_clause: Optional[str] = None
+    ev_calculation_breakdown: Optional[str] = None
+    why_chosen: Optional[str] = None
 
 
 class AuditEntry(BaseModel):

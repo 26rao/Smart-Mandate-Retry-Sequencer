@@ -52,6 +52,18 @@ async def diagnose_node(state: SequencerState) -> SequencerState:
         if llm_diag:
             diagnosis = llm_diag
             llm_used = True
+        else:
+            # Conservative Deterministic Fallback on LLM Outage/Timeout
+            diagnosis = Diagnosis(
+                category=DeclineCategory.UNKNOWN,
+                recoverability=0.30,
+                recommended_action=ActionType.SOFT_NOTIFY,
+                reason="LLM Diagnostic Service unavailable or timed out. Gracefully degraded to conservative soft notification.",
+                confidence=0.70,
+                suggested_delay_hours=None,
+                llm_model=None,
+                raw_reasoning="Graceful Degradation Event: LLM service unavailable or timed out. System defaulted to safest zero-debit customer notification (0 risk, 0 attempt waste).",
+            )
 
     state.diagnosis = diagnosis
     state.current_stage = "diagnosed"

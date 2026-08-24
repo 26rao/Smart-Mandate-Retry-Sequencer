@@ -6,7 +6,7 @@ import csv
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager
 from typing import List, Optional, Dict, Any
-from fastapi import FastAPI, HTTPException, Depends, Response
+from fastapi import FastAPI, HTTPException, Depends, Response, Header, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from sqlalchemy.future import select
@@ -27,7 +27,9 @@ from app.agent.graph import sequencer_agent
 from app.utils.audit import save_sequencer_state_async
 from app.simulator.generator import generate_synthetic_failures, export_sample_failures_json
 from app.services.razorpay_client import razorpay_service
+from app.services.webhook_verifier import verify_razorpay_webhook
 from app.utils.metrics import evaluator
+from app.utils.verifier import independent_verifier
 
 
 @asynccontextmanager
@@ -42,8 +44,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title="Razorpay Smart Mandate Retry Sequencer",
-    description="Agentic, safety-first mandate retry sequencer with deterministic policy layer, Groq classification, and real Razorpay test-mode SDK.",
-    version="1.2.0",
+    description="Agentic, safety-first mandate retry sequencer with deterministic policy layer, Groq classification, independent compliance verifier, and real Razorpay test-mode SDK.",
+    version="1.3.0",
     lifespan=lifespan,
 )
 
@@ -137,7 +139,7 @@ async def health_check():
     return {
         "status": "healthy",
         "service": "razorpay-smart-mandate-sequencer",
-        "version": "1.2.0",
+        "version": "1.3.0",
         "mode": "LIVE" if not settings.DRY_RUN else "DRY_RUN",
         "llm_provider": settings.LLM_PROVIDER,
         "groq_model": settings.GROQ_MODEL,
@@ -145,10 +147,21 @@ async def health_check():
         "max_attempts": settings.MAX_ATTEMPTS,
         "regulatory_frameworks": [
             "NPCI UPI Autopay (4-Attempt Bound)",
-            "RBI E-Mandate (Pre-Debit Notice Required)",
+            "RBI E-Mandate (Pre-Debit Notice Required, 3-Attempt Cap)",
         ],
         "razorpay_configured": bool(settings.RAZORPAY_KEY_ID and not settings.RAZORPAY_KEY_ID.startswith("rzp_test_mock")),
+        "independent_verifier": "ENABLED",
     }
+
+
+@app.get("/api/v1/compliance/independent-audit")
+async def run_independent_audit(limit: int = 250):
+    """
+    Independent 3rd-Party Compliance Asserter:
+    Zero-trust verification decoupled from sequencing state machine.
+    Directly asserts framework caps, 24h statutory window deltas, and SHA-256 Merkle chain.
+    """
+    return independent_verifier.verify_ledger_records(limit=limit)
 
 
 @app.get("/api/v1/audit/verify")
@@ -279,10 +292,73 @@ async def process_batch_failures(failures: List[MandateFailure]):
 
 @app.get("/api/v1/sequencer/benchmark")
 async def run_benchmark(count: int = 250, seed: int = 42):
-    """Run comparative benchmark against naive calendar retries."""
+    """Run comparative benchmark against naive calendar retries with cohort & EV trade-off breakdowns."""
     failures = generate_synthetic_failures(count=count, seed=seed)
     states = await sequencer_agent.run_batch(failures)
     return evaluator.compare(failures, states)
+
+
+@app.get("/api/v1/sequencer/sensitivity")
+async def run_sensitivity(seeds: str = "42,101,777", count: int = 250):
+    """Run multi-seed sensitivity analysis across distinct held-out distributions."""
+    seed_list = [int(s.strip()) for s in seeds.split(",") if s.strip().isdigit()]
+    if not seed_list:
+        seed_list = [42, 101, 777]
+    return await evaluator.run_sensitivity_analysis(seeds=seed_list, count=count)
+
+
+@app.post("/api/v1/webhooks/razorpay")
+async def handle_razorpay_webhook(
+    request: Request,
+    x_razorpay_signature: Optional[str] = Header(None, alias="X-Razorpay-Signature"),
+):
+    """
+    Ingest live/test Razorpay Webhooks with official HMAC-SHA256 signature verification.
+    """
+    body_bytes = await request.body()
+    is_valid, reason = verify_razorpay_webhook(
+        raw_body=body_bytes,
+        signature=x_razorpay_signature,
+    )
+    
+    if not is_valid:
+        raise HTTPException(status_code=400, detail=f"Webhook signature verification failed: {reason}")
+
+    try:
+        data = json.loads(body_bytes.decode("utf-8"))
+        event_name = data.get("event", "payment.failed")
+        payload = data.get("payload", {})
+        payment_entity = payload.get("payment", {}).get("entity", {})
+        
+        # Convert webhook payload to MandateFailure
+        failure = MandateFailure(
+            id=f"wh_{uuid.uuid4().hex[:8]}",
+            payment_id=payment_entity.get("id", f"pay_wh_{uuid.uuid4().hex[:6]}"),
+            mandate_id=payment_entity.get("order_id", f"ord_wh_{uuid.uuid4().hex[:6]}"),
+            amount=payment_entity.get("amount", 249900),
+            currency=payment_entity.get("currency", "INR"),
+            error_code=payment_entity.get("error_code", "BAD_REQUEST_ERROR"),
+            error_reason=payment_entity.get("error_reason", "payment_failed"),
+            error_source=payment_entity.get("error_source", "bank"),
+            error_step=payment_entity.get("error_step", "payment_authorization"),
+            error_description=payment_entity.get("error_description", "Webhook delivered failure"),
+            payment_method=payment_entity.get("method", "upi_autopay"),
+            attempt_number=1,
+        )
+
+        state = await sequencer_agent.run(failure)
+        await save_sequencer_state_async(state)
+
+        return {
+            "status": "success",
+            "webhook_verified": True,
+            "signature_match": reason,
+            "event": event_name,
+            "decision": state.decision,
+            "execution_result": state.execution_result,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Webhook processing error: {str(e)}")
 
 
 @app.post("/api/v1/razorpay/test-order")

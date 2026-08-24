@@ -18,6 +18,7 @@ export interface RealErrorPayloadItem {
     error_description: string;
     customer_id?: string;
     customer_persona?: string;
+    payment_method?: string;
     attempt_number: number;
     salary_day_of_month?: number;
   };
@@ -50,6 +51,9 @@ export interface Decision {
   remaining_attempts: number;
   confidence: number;
   is_safe: boolean;
+  policy_clause?: string;
+  ev_calculation_breakdown?: string;
+  why_chosen?: string;
 }
 
 export interface AuditEntry {
@@ -102,13 +106,65 @@ export interface BenchmarkResponse {
     compliance_pct: number;
     recovered_count: number;
     exceptions_count: number;
+    ev_negative_halts_count?: number;
+    ev_negative_halts_sample?: any[];
   };
+  cohorts?: Record<string, {
+    persona: string;
+    total_count: number;
+    total_at_risk_inr: number;
+    recovered_inr: number;
+    recovery_rate_pct: number;
+    attempts_used: number;
+  }>;
   comparison: {
     additional_inr_recovered: number;
     attempts_saved: number;
     attempts_saved_pct: number;
     policy_violations_prevented: number;
     compliance_score_gain: number;
+    ev_negative_tradeoffs_halted?: number;
+  };
+}
+
+export interface SensitivityResponse {
+  tested_seeds: number[];
+  runs: Array<{
+    seed: number;
+    sample_size: number;
+    baseline_recovery_pct: number;
+    sequencer_recovery_pct: number;
+    net_lift_pct: number;
+    attempts_saved_pct: number;
+    violations_prevented: number;
+    additional_inr_recovered: number;
+  }>;
+  stability_summary: {
+    median_recovery_lift_pct: number;
+    min_recovery_lift_pct: number;
+    max_recovery_lift_pct: number;
+    median_attempts_saved_pct: number;
+    min_attempts_saved_pct: number;
+    max_attempts_saved_pct: number;
+    conclusion: string;
+  };
+}
+
+export interface IndependentAuditResponse {
+  status: string;
+  verifier: string;
+  timestamp_utc: string;
+  all_assertions_passed: boolean;
+  total_blocks_checked: number;
+  total_violations_found: number;
+  score_pct: number;
+  summary: string;
+  assertions: {
+    hash_chain_continuity: { passed: boolean; violations: any[] };
+    npci_upi_attempt_cap: { passed: boolean; violations: any[] };
+    rbi_card_attempt_cap: { passed: boolean; violations: any[] };
+    statutory_24h_notice_window: { passed: boolean; violations: any[] };
+    terminal_revocation_lock: { passed: boolean; violations: any[] };
   };
 }
 
@@ -137,11 +193,27 @@ export async function processMandate(payload: any): Promise<ProcessResponse> {
   return res.json();
 }
 
-export async function runBenchmark(count: number = 250): Promise<BenchmarkResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/benchmark?count=${count}`, {
+export async function runBenchmark(count: number = 250, seed: number = 42): Promise<BenchmarkResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/sequencer/benchmark?count=${count}&seed=${seed}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Benchmark execution failed");
+  return res.json();
+}
+
+export async function fetchSensitivityAnalysis(seeds: string = "42,101,777"): Promise<SensitivityResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/sequencer/sensitivity?seeds=${seeds}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Sensitivity analysis failed");
+  return res.json();
+}
+
+export async function fetchIndependentAudit(limit: number = 250): Promise<IndependentAuditResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/compliance/independent-audit?limit=${limit}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Independent audit failed");
   return res.json();
 }
 

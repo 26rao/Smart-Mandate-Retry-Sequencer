@@ -80,11 +80,18 @@ class Decision(BaseModel):
     schedule_at: Optional[datetime] = None
     notice_sent_at: Optional[datetime] = None
     earliest_retry_at: Optional[datetime] = None
+    is_non_peak_scheduled: bool = False
+    expected_value_inr: Optional[float] = None
+    attempt_cost_inr: float = 2.50
+    razorpay_order_id: Optional[str] = None
     message_template: Optional[str] = None
     rationale: str
     remaining_attempts: int
     confidence: float
     is_safe: bool = True
+    policy_clause: Optional[str] = None
+    ev_calculation_breakdown: Optional[str] = None
+    why_chosen: Optional[str] = None
 
 
 class AuditEntry(BaseModel):
