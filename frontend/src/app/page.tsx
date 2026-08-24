@@ -53,23 +53,131 @@ import {
   Scale,
   BarChart3,
   HelpCircle,
-  ToggleLeft,
-  ToggleRight,
   Info,
 } from "lucide-react";
 
+const DEFAULT_FALLBACK_PAYLOADS: RealErrorPayloadItem[] = [
+  {
+    id: "rzp_err_01",
+    name: "🤖 Soft Decline – LLM Dynamic Path (gpt-oss-120b)",
+    category_expected: "temporary_bank_issue",
+    description: "Issuing bank unstructured decline: 'soft decline: retry advised after cardholder authentication window'.",
+    payload: {
+      id: "mf_real_001",
+      payment_id: "pay_test_soft_01",
+      mandate_id: "order_test_mandate_01",
+      amount: 349900,
+      currency: "INR",
+      error_code: "PROCESSOR_DECLINE",
+      error_reason: "soft_decline_retry_advised",
+      error_source: "bank",
+      error_step: "payment_authorization",
+      error_description: "Issuer soft decline: Retry advised after cardholder authentication window.",
+      customer_id: "cust_demo_9821",
+      customer_persona: "salaried_corporate",
+      attempt_number: 1,
+      salary_day_of_month: 1,
+    },
+  },
+  {
+    id: "rzp_err_02",
+    name: "Insufficient Funds (Test Card 4000 0000 0000 9995)",
+    category_expected: "insufficient_funds",
+    description: "Standard insufficient balance on monthly recurring subscription debit.",
+    payload: {
+      id: "mf_real_002",
+      payment_id: "pay_test_fund_02",
+      mandate_id: "order_test_mandate_02",
+      amount: 249900,
+      currency: "INR",
+      error_code: "BAD_REQUEST_ERROR",
+      error_reason: "insufficient_funds",
+      error_source: "customer",
+      error_step: "payment_authorization",
+      error_description: "Insufficient funds in customer bank account.",
+      customer_id: "cust_demo_4412",
+      customer_persona: "salaried_corporate",
+      attempt_number: 1,
+      salary_day_of_month: 1,
+    },
+  },
+  {
+    id: "rzp_err_03",
+    name: "Mandate Revoked by Customer (UPI Autopay Revocation)",
+    category_expected: "consent_withdrawn",
+    description: "Customer cancelled autopay mandate in PhonePe/GooglePay app. Regulatory hard stop.",
+    payload: {
+      id: "mf_real_003",
+      payment_id: "pay_test_revoked_03",
+      mandate_id: "order_test_mandate_03",
+      amount: 99900,
+      currency: "INR",
+      error_code: "BAD_REQUEST_ERROR",
+      error_reason: "mandate_cancelled_by_customer",
+      error_source: "customer",
+      error_step: "payment_authorization",
+      error_description: "Customer revoked autopay authorization on UPI app.",
+      customer_id: "cust_demo_1190",
+      customer_persona: "attrited_churner",
+      attempt_number: 1,
+      salary_day_of_month: 15,
+    },
+  },
+  {
+    id: "rzp_err_04",
+    name: "Card Token Expired (Saved Debit/Credit Card)",
+    category_expected: "card_expired",
+    description: "Saved tokenized card has passed its expiry date. Zero-cost method switch.",
+    payload: {
+      id: "mf_real_004",
+      payment_id: "pay_test_expired_04",
+      mandate_id: "order_test_mandate_04",
+      amount: 149900,
+      currency: "INR",
+      error_code: "BAD_REQUEST_ERROR",
+      error_reason: "card_expired",
+      error_source: "customer",
+      error_step: "payment_authorization",
+      error_description: "Card token is expired or invalid.",
+      customer_id: "cust_demo_8823",
+      customer_persona: "gig_freelancer",
+      attempt_number: 1,
+      salary_day_of_month: 7,
+    },
+  },
+  {
+    id: "rzp_err_05",
+    name: "Bank Technical Downtime (Test Card 4000 0000 0000 1003)",
+    category_expected: "temporary_bank_issue",
+    description: "Issuing bank CBS down during batch debit window. Recoverable with delay.",
+    payload: {
+      id: "mf_real_005",
+      payment_id: "pay_test_down_05",
+      mandate_id: "order_test_mandate_05",
+      amount: 499900,
+      currency: "INR",
+      error_code: "GATEWAY_ERROR",
+      error_reason: "bank_technical_error",
+      error_source: "bank",
+      error_step: "payment_authorization",
+      error_description: "Bank CBS offline during recurring clearing run.",
+      customer_id: "cust_demo_3301",
+      customer_persona: "hnw_subscriber",
+      attempt_number: 1,
+      salary_day_of_month: 5,
+    },
+  },
+];
+
 export default function Home() {
-  // 4 Top-level Tabs
   const [activeTab, setActiveTab] = useState<"live" | "benchmark_inspector" | "compliance" | "ops">("live");
-  
-  // Sub-tabs
   const [benchmarkSubTab, setBenchmarkSubTab] = useState<"benchmark" | "sensitivity" | "inspector">("benchmark");
   const [complianceSubTab, setComplianceSubTab] = useState<"independent_audit" | "ledger" | "taxonomy">("independent_audit");
 
-  const [backendHealth, setBackendHealth] = useState<any>(null);
-  const [realPayloads, setRealPayloads] = useState<RealErrorPayloadItem[]>([]);
-  const [selectedPayloadId, setSelectedPayloadId] = useState<string>("");
-  const [currentPayload, setCurrentPayload] = useState<any>(null);
+  const [backendHealth, setBackendHealth] = useState<any>({ status: "connected" });
+  const [realPayloads, setRealPayloads] = useState<RealErrorPayloadItem[]>(DEFAULT_FALLBACK_PAYLOADS);
+  const [selectedPayloadId, setSelectedPayloadId] = useState<string>("rzp_err_01");
+  const [currentPayload, setCurrentPayload] = useState<any>(DEFAULT_FALLBACK_PAYLOADS[0].payload);
   
   // Execution state
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
@@ -77,10 +185,9 @@ export default function Home() {
   const [testOrderResult, setTestOrderResult] = useState<any>(null);
   const [isCreatingTestOrder, setIsCreatingTestOrder] = useState<boolean>(false);
   const [copiedPayload, setCopiedPayload] = useState<boolean>(false);
-  const [simulateLlmOutage, setSimulateLlmOutage] = useState<boolean>(false);
   
   // Inspector dedicated state
-  const [customJsonInput, setCustomJsonInput] = useState<string>("");
+  const [customJsonInput, setCustomJsonInput] = useState<string>(JSON.stringify(DEFAULT_FALLBACK_PAYLOADS[0].payload, null, 2));
   const [customJsonResult, setCustomJsonResult] = useState<any>(null);
   const [isCustomProcessing, setIsCustomProcessing] = useState<boolean>(false);
 
@@ -109,29 +216,15 @@ export default function Home() {
   const [taxonomyData, setTaxonomyData] = useState<any>(null);
   const [taxonomySearch, setTaxonomySearch] = useState<string>("");
 
-  // Load initial data
+  // Non-blocking initial data load
   useEffect(() => {
-    fetchHealth()
-      .then((h) => setBackendHealth(h))
-      .catch(() => setBackendHealth({ status: "offline" }));
-
+    fetchHealth().then(setBackendHealth).catch(() => setBackendHealth({ status: "offline" }));
     fetchRealPayloads()
       .then((payloads) => {
-        setRealPayloads(payloads);
-        if (payloads.length > 0) {
-          setSelectedPayloadId(payloads[0].id);
-          setCurrentPayload(payloads[0].payload);
-          setCustomJsonInput(JSON.stringify(payloads[0].payload, null, 2));
+        if (payloads && payloads.length > 0) {
+          setRealPayloads(payloads);
         }
       })
-      .catch(console.error);
-
-    fetchTaxonomy()
-      .then((t) => setTaxonomyData(t))
-      .catch(console.error);
-
-    fetchIndependentAudit()
-      .then((a) => setIndependentAudit(a))
       .catch(console.error);
   }, []);
 
@@ -273,8 +366,13 @@ export default function Home() {
     setTimeout(() => setCopiedPayload(false), 2000);
   };
 
+  // Lazy load tab data on tab change
   useEffect(() => {
-    if (activeTab === "compliance" || activeTab === "ops") {
+    if (activeTab === "compliance") {
+      if (!independentAudit) handleRunIndependentAudit();
+      if (!taxonomyData) fetchTaxonomy().then(setTaxonomyData).catch(console.error);
+      loadAuditLogs();
+    } else if (activeTab === "ops") {
       loadAuditLogs();
     }
   }, [activeTab]);
