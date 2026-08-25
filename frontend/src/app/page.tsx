@@ -844,9 +844,11 @@ export default function Home() {
                   </button>
                 </div>
 
-                {independentAudit && (
+                {independentAudit?.assertions && (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {Object.entries(independentAudit.assertions).map(([key, item]: any) => (
+                    {Object.entries(independentAudit.assertions)
+                      .filter(([_, item]: any) => item && typeof item === "object" && "passed" in item)
+                      .map(([key, item]: any) => (
                       <div key={key} className="bg-slate-900/80 border border-slate-800 rounded-xl p-4 space-y-2">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-white uppercase">{key.replace(/_/g, " ")}</span>
@@ -857,7 +859,7 @@ export default function Home() {
                           </span>
                         </div>
                         <p className="text-xs text-slate-400">
-                          {item.passed ? "100% verified against statutory policy bounds." : `${item.violations.length} violations flagged.`}
+                          {item.passed ? "100% verified against statutory policy bounds." : `${item.violations?.length || 0} violations flagged.`}
                         </p>
                       </div>
                     ))}
