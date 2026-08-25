@@ -50,8 +50,11 @@ class IndependentComplianceVerifier:
                 "verifier": "Independent 3rd-Party Compliance Asserter v1.2",
                 "timestamp_utc": datetime.now(timezone.utc).isoformat(),
                 "all_assertions_passed": True,
+                "total_blocks_checked": 0,
+                "total_violations_found": 0,
                 "score_pct": 100.0,
                 "summary": "Ledger is initialized and ready. 0 violations detected.",
+                "assertions": assertions,
                 "details": assertions,
             }
 
