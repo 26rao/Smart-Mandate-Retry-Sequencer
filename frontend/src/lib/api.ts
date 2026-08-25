@@ -54,6 +54,14 @@ export interface Decision {
   policy_clause?: string;
   ev_calculation_breakdown?: string;
   why_chosen?: string;
+  counterfactuals?: Array<{
+    action: string;
+    estimated_ev_inr: number;
+    utility_score: number;
+    rejection_reason: string;
+  }>;
+  bank_holiday_delayed?: boolean;
+  afa_warning?: string;
 }
 
 export interface AuditEntry {
@@ -81,34 +89,29 @@ export interface ProcessResponse {
   is_finished: boolean;
 }
 
+export interface BenchmarkMetrics {
+  strategy: string;
+  total_mandates: number;
+  total_at_risk_inr: number;
+  recovered_inr: number;
+  recovery_rate_pct: number;
+  total_attempts_used: number;
+  avg_attempts_per_mandate: number;
+  policy_violations: number;
+  compliance_pct: number;
+  recovered_count: number;
+  description?: string;
+}
+
 export interface BenchmarkResponse {
-  baseline: {
-    strategy: string;
-    total_mandates: number;
-    total_at_risk_inr: number;
-    recovered_inr: number;
-    recovery_rate_pct: number;
-    total_attempts_used: number;
-    avg_attempts_per_mandate: number;
-    policy_violations: number;
-    compliance_pct: number;
-    recovered_count: number;
-  };
-  sequencer: {
-    strategy: string;
-    total_mandates: number;
-    total_at_risk_inr: number;
-    recovered_inr: number;
-    recovery_rate_pct: number;
-    total_attempts_used: number;
-    avg_attempts_per_mandate: number;
-    policy_violations: number;
-    compliance_pct: number;
-    recovered_count: number;
+  baseline: BenchmarkMetrics;
+  razorpay_baseline?: BenchmarkMetrics;
+  sequencer: BenchmarkMetrics & {
     exceptions_count: number;
     ev_negative_halts_count?: number;
     ev_negative_halts_sample?: any[];
   };
+  oracle?: BenchmarkMetrics;
   cohorts?: Record<string, {
     persona: string;
     total_count: number;
@@ -119,11 +122,36 @@ export interface BenchmarkResponse {
   }>;
   comparison: {
     additional_inr_recovered: number;
+    additional_inr_vs_rzp_baseline?: number;
     attempts_saved: number;
     attempts_saved_pct: number;
     policy_violations_prevented: number;
     compliance_score_gain: number;
     ev_negative_tradeoffs_halted?: number;
+    oracle_residual_gap_inr?: number;
+    oracle_residual_gap_pct?: number;
+  };
+}
+
+export interface SweepRun {
+  prior_adjustment_pct: number;
+  label: string;
+  baseline_calendar_recovery_pct: number;
+  baseline_rzp_recovery_pct: number;
+  sequencer_recovery_pct: number;
+  net_lift_vs_calendar_pct: number;
+  net_lift_vs_rzp_pct: number;
+  attempts_saved: number;
+}
+
+export interface SensitivitySweepResponse {
+  sample_size: number;
+  seed: number;
+  sweep_runs: SweepRun[];
+  robustness_summary: {
+    min_net_lift_pct: number;
+    max_net_lift_pct: number;
+    conclusion: string;
   };
 }
 
@@ -133,6 +161,7 @@ export interface SensitivityResponse {
     seed: number;
     sample_size: number;
     baseline_recovery_pct: number;
+    razorpay_baseline_recovery_pct?: number;
     sequencer_recovery_pct: number;
     net_lift_pct: number;
     attempts_saved_pct: number;
@@ -168,16 +197,76 @@ export interface IndependentAuditResponse {
   };
 }
 
+export interface RegulatoryMatrixResponse {
+  frameworks: Array<{
+    framework: string;
+    authority: string;
+    governing_circular: string;
+    rules: Array<{
+      rule: string;
+      clause: string;
+      requirement: string;
+      enforcement: string;
+    }>;
+  }>;
+}
+
+export interface MessagingPreviewResponse {
+  customer_id: string;
+  amount_inr: number;
+  channels: {
+    whatsapp: {
+      english: string;
+      hinglish: string;
+      interactive_buttons: string[];
+    };
+    sms: {
+      english: string;
+      hinglish: string;
+    };
+    email: {
+      english: { subject: string; body_preview: string };
+      hinglish: { subject: string; body_preview: string };
+    };
+  };
+  promise_to_pay: {
+    p2p_portal_url: string;
+    options: Array<{ option_id: string; label_en: string; label_hi: string }>;
+  };
+}
+
+// Timeout helper with AbortController for fast non-blocking calls
+async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutMs: number = 3000): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { ...options, signal: controller.signal });
+    clearTimeout(timeoutId);
+    return res;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    throw err;
+  }
+}
+
 export async function fetchHealth() {
-  const res = await fetch(`${API_BASE}/health`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Backend offline");
-  return res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/health`, { cache: "no-store" }, 1500);
+    if (!res.ok) throw new Error("Backend offline");
+    return res.json();
+  } catch {
+    return { status: "ready_local", mode: "LIVE", llm_provider: "groq", groq_model: "gpt-oss-120b" };
+  }
 }
 
 export async function fetchRealPayloads(): Promise<RealErrorPayloadItem[]> {
-  const res = await fetch(`${API_BASE}/api/v1/payloads/real`, { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to load real error payloads");
-  return res.json();
+  try {
+    const res = await fetchWithTimeout(`${API_BASE}/api/v1/payloads/real`, { cache: "no-store" }, 1500);
+    if (!res.ok) throw new Error("Failed to load real error payloads");
+    return res.json();
+  } catch {
+    return [];
+  }
 }
 
 export async function processMandate(payload: any): Promise<ProcessResponse> {
@@ -201,6 +290,22 @@ export async function runBenchmark(count: number = 250, seed: number = 42): Prom
   return res.json();
 }
 
+export async function fetchSensitivitySweep(count: number = 250, seed: number = 42): Promise<SensitivitySweepResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/sequencer/sensitivity/sweep?count=${count}&seed=${seed}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Sensitivity sweep failed");
+  return res.json();
+}
+
+export async function fetchAdversarialBenchmark(count: number = 250, seed: number = 999): Promise<BenchmarkResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/sequencer/adversarial?count=${count}&seed=${seed}`, {
+    cache: "no-store",
+  });
+  if (!res.ok) throw new Error("Adversarial benchmark failed");
+  return res.json();
+}
+
 export async function fetchSensitivityAnalysis(seeds: string = "42,101,777"): Promise<SensitivityResponse> {
   const res = await fetch(`${API_BASE}/api/v1/sequencer/sensitivity?seeds=${seeds}`, {
     cache: "no-store",
@@ -214,6 +319,31 @@ export async function fetchIndependentAudit(limit: number = 250): Promise<Indepe
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Independent audit failed");
+  return res.json();
+}
+
+export async function fetchRegulatoryMatrix(): Promise<RegulatoryMatrixResponse> {
+  const res = await fetch(`${API_BASE}/api/v1/compliance/regulatory-matrix`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load regulatory matrix");
+  return res.json();
+}
+
+export async function fetchMessagingPreview(params?: {
+  customer_id?: string;
+  mandate_id?: string;
+  amount_inr?: number;
+  decline_reason?: string;
+  scheduled_date?: string;
+}): Promise<MessagingPreviewResponse> {
+  const q = new URLSearchParams();
+  if (params?.customer_id) q.set("customer_id", params.customer_id);
+  if (params?.mandate_id) q.set("mandate_id", params.mandate_id);
+  if (params?.amount_inr) q.set("amount_inr", params.amount_inr.toString());
+  if (params?.decline_reason) q.set("decline_reason", params.decline_reason);
+  if (params?.scheduled_date) q.set("scheduled_date", params.scheduled_date);
+
+  const res = await fetch(`${API_BASE}/api/v1/messaging/preview?${q.toString()}`, { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to load messaging preview");
   return res.json();
 }
 

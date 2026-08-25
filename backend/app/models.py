@@ -92,6 +92,9 @@ class Decision(BaseModel):
     policy_clause: Optional[str] = None
     ev_calculation_breakdown: Optional[str] = None
     why_chosen: Optional[str] = None
+    counterfactuals: Optional[List[Dict[str, Any]]] = None
+    bank_holiday_delayed: bool = False
+    afa_warning: Optional[str] = None
 
 
 class AuditEntry(BaseModel):

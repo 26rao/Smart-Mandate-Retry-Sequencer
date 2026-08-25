@@ -1,9 +1,9 @@
 from datetime import datetime, timedelta, timezone
-from typing import Any, Optional, Tuple, Union
+from typing import Any, Dict, List, Optional, Tuple, Union
 from app.config import settings
 from app.models import ActionType, DeclineCategory, Decision, Diagnosis, MandateFailure
 
-# Terminal non-retryable categories
+# Terminal non-retryable categories (Strict regulatory hard stops)
 TERMINAL_NON_RETRYABLE = {
     DeclineCategory.CONSENT_WITHDRAWN,
     DeclineCategory.ACCOUNT_CLOSED,
@@ -12,7 +12,68 @@ TERMINAL_NON_RETRYABLE = {
     DeclineCategory.MANDATE_INACTIVE,
 }
 
-ATTEMPT_COST_INR = 2.50  # Estimated per-attempt payment gateway & bank infrastructure cost
+ATTEMPT_COST_INR = 2.50  # Estimated per-attempt payment gateway & bank infrastructure fee
+
+# Statutory RBI AFA (Additional Factor of Authentication) Threshold for recurring e-mandates
+RBI_AFA_THRESHOLD_INR = 15000.0
+
+# Indian Banking / RTGS / NEFT Holidays for 2026 (Month, Day)
+INDIAN_BANK_HOLIDAYS_2026 = {
+    (1, 26),   # Republic Day
+    (3, 25),   # Holi
+    (4, 14),   # Ambedkar Jayanti
+    (5, 1),    # May Day
+    (8, 15),   # Independence Day
+    (10, 2),   # Gandhi Jayanti
+    (10, 20),  # Dussehra
+    (11, 8),   # Diwali
+    (12, 25),  # Christmas
+}
+
+
+def is_indian_bank_holiday(dt: datetime) -> bool:
+    """
+    Check if a datetime in IST corresponds to an Indian bank holiday or Sunday.
+    Also handles 2nd and 4th Saturdays of the month (RBI Clearing Holiday).
+    """
+    # Convert UTC to IST (+5:30)
+    ist_time = dt + timedelta(hours=5, minutes=30)
+    
+    # 1. Sundays
+    if ist_time.weekday() == 6:
+        return True
+
+    # 2. 2nd and 4th Saturdays
+    if ist_time.weekday() == 5:
+        day = ist_time.day
+        week_num = (day - 1) // 7 + 1
+        if week_num in {2, 4}:
+            return True
+
+    # 3. Gazetted Bank Holidays
+    if (ist_time.month, ist_time.day) in INDIAN_BANK_HOLIDAYS_2026:
+        return True
+
+    return False
+
+
+def adjust_for_bank_holidays(target_time: datetime) -> Tuple[datetime, bool]:
+    """
+    If target retry time falls on an Indian Bank Holiday, shift forward to the next
+    valid clearing business day at 03:30 UTC (09:00 AM IST) to prevent false technical drops.
+    """
+    current = target_time
+    was_delayed = False
+    max_days = 5
+    attempts = 0
+
+    while is_indian_bank_holiday(current) and attempts < max_days:
+        current += timedelta(days=1)
+        current = current.replace(hour=3, minute=30, second=0, microsecond=0)
+        was_delayed = True
+        attempts += 1
+
+    return current, was_delayed
 
 
 def get_max_attempts_for_method(payment_method: str) -> int:
@@ -36,7 +97,6 @@ def can_retry(
 ) -> Union[bool, Tuple[bool, str]]:
     """
     Deterministic Regulatory Safety Gate.
-    Supports both can_retry(failure, diagnosis) and can_retry(category, attempt_number).
     1. NPCI UPI Autopay: Strict 4-attempt hard cap (1 original + 3 retries).
     2. RBI Card E-Mandate: Strict 3-attempt hard cap (1 original + 2 retries).
     3. RBI E-Mandate Framework: Requires mandatory pre-debit notification before debit attempts.
@@ -91,6 +151,7 @@ def align_to_non_peak_window(target_time: datetime) -> datetime:
     """
     NPCI Non-Peak Window Alignment for UPI Autopay:
     Align retry execution to 03:30 AM UTC (09:00 AM IST) or off-peak banking window 02:00-06:00 IST.
+    Avoids 09:00 AM - 11:30 AM IST core banking batch clearing congestion.
     """
     aligned = target_time.replace(hour=3, minute=30, second=0, microsecond=0)
     if aligned < target_time:
@@ -106,8 +167,8 @@ def calculate_schedule_time(
     is_upi: bool = False,
 ) -> Union[datetime, Tuple[datetime, bool]]:
     """
-    Calculate optimal retry execution time.
-    Supports calculate_schedule_time(failure, diagnosis, current_time=...) and calculate_schedule_time(salary_day, ...).
+    Calculate optimal retry execution time factoring in salary cycles, non-peak hours,
+    and Indian bank holidays.
     """
     if isinstance(salary_day_or_failure, MandateFailure):
         salary_day = salary_day_or_failure.salary_day_of_month
@@ -126,8 +187,8 @@ def calculate_schedule_time(
         sched = now + timedelta(hours=delay)
         if upi:
             sched = align_to_non_peak_window(sched)
-            return (sched, True) if return_tuple else sched
-        return (sched, False) if return_tuple else sched
+        sched, _ = adjust_for_bank_holidays(sched)
+        return (sched, True) if return_tuple else sched
 
     if salary_day and 1 <= salary_day <= 31:
         target_day = min(salary_day + 1, 28)
@@ -138,14 +199,113 @@ def calculate_schedule_time(
         else:
             days_ahead = (30 - current_day) + target_day
 
-        sched = (now + timedelta(days=days_ahead)).replace(hour=4, minute=30, second=0, microsecond=0)
+        sched = (now + timedelta(days=days_ahead)).replace(hour=3, minute=30, second=0, microsecond=0)
+        sched, _ = adjust_for_bank_holidays(sched)
         return (sched, upi) if return_tuple else sched
 
     sched = now + timedelta(hours=24)
     if upi:
         sched = align_to_non_peak_window(sched)
-        return (sched, True) if return_tuple else sched
+    sched, _ = adjust_for_bank_holidays(sched)
     return (sched, False) if return_tuple else sched
+
+
+def evaluate_action_counterfactuals(
+    failure: MandateFailure,
+    diagnosis: Diagnosis,
+    selected_action: ActionType,
+    amount_inr: float,
+    remaining_attempts: int,
+) -> List[Dict[str, Any]]:
+    """
+    Scarce Resource Action Planner Counterfactual Evaluator.
+    Logs every considered candidate action, its utility score, EV, and why it was rejected.
+    """
+    candidate_actions = [
+        ActionType.SCHEDULE_RETRY,
+        ActionType.RETRY_NOW,
+        ActionType.SUGGEST_METHOD_SWITCH,
+        ActionType.SOFT_NOTIFY,
+        ActionType.ESCALATE,
+        ActionType.HARD_STOP,
+    ]
+
+    counterfactuals = []
+    for act in candidate_actions:
+        if act == selected_action:
+            continue
+
+        act_ev = 0.0
+        rejection_reason = ""
+        utility_score = 0.0
+
+        if act == ActionType.RETRY_NOW:
+            act_ev = round((diagnosis.recoverability * amount_inr) - ATTEMPT_COST_INR, 2)
+            if diagnosis.category in {DeclineCategory.INSUFFICIENT_FUNDS, DeclineCategory.TEMPORARY_BANK_ISSUE}:
+                rejection_reason = "Immediate retry would hit identical liquidity deficit or server downtime, wasting 1 scarce attempt."
+                utility_score = 0.15
+            elif diagnosis.category in TERMINAL_NON_RETRYABLE:
+                rejection_reason = "Legally prohibited on terminal non-retryable categories."
+                utility_score = 0.0
+            else:
+                rejection_reason = "Lower probability of recovery than scheduled cooldown."
+                utility_score = 0.40
+
+        elif act == ActionType.SCHEDULE_RETRY:
+            act_ev = round((diagnosis.recoverability * amount_inr) - ATTEMPT_COST_INR, 2)
+            if diagnosis.category in TERMINAL_NON_RETRYABLE:
+                rejection_reason = "Cannot schedule retries for consent-revoked or closed accounts (NPCI/RBI regulatory violation)."
+                utility_score = 0.0
+            elif remaining_attempts <= 0:
+                rejection_reason = "Attempt budget exhausted (0 remaining)."
+                utility_score = 0.0
+            elif diagnosis.category == DeclineCategory.NETWORK_GLITCH:
+                rejection_reason = "Network glitch resolved immediately; delaying 24h creates unnecessary revenue float delay."
+                utility_score = 0.45
+            else:
+                rejection_reason = "Sub-optimal compared to immediate method switch or notification."
+                utility_score = 0.60
+
+        elif act == ActionType.SUGGEST_METHOD_SWITCH:
+            act_ev = round(0.40 * amount_inr, 2)
+            if diagnosis.category != DeclineCategory.CARD_EXPIRED and diagnosis.recoverability > 0.70:
+                rejection_reason = f"Primary payment rail is valid ({diagnosis.category.value}); method switch adds customer friction."
+                utility_score = 0.35
+            else:
+                rejection_reason = "Direct retry or notice has higher immediate conversion."
+                utility_score = 0.50
+
+        elif act == ActionType.SOFT_NOTIFY:
+            act_ev = round(0.50 * amount_inr, 2)
+            if diagnosis.category in {DeclineCategory.NETWORK_GLITCH, DeclineCategory.GATEWAY_TIMEOUT}:
+                rejection_reason = "Customer has no action to take on transient gateway errors; sending notification causes unnecessary alarm."
+                utility_score = 0.20
+            else:
+                rejection_reason = "Automated retry schedule yields higher expected recovery without manual customer friction."
+                utility_score = 0.55
+
+        elif act == ActionType.ESCALATE:
+            act_ev = 0.0
+            rejection_reason = "Automated policy handles this failure pattern cleanly; human operator intervention is not required."
+            utility_score = 0.10
+
+        elif act == ActionType.HARD_STOP:
+            act_ev = 0.0
+            if diagnosis.category not in TERMINAL_NON_RETRYABLE and remaining_attempts > 0:
+                rejection_reason = f"Mandate is recoverable ({diagnosis.recoverability:.0%}) with active budget ({remaining_attempts} left); premature termination loses recoverable revenue."
+                utility_score = 0.05
+            else:
+                rejection_reason = "Hard stop was not selected."
+                utility_score = 0.0
+
+        counterfactuals.append({
+            "action": act.value,
+            "estimated_ev_inr": act_ev,
+            "utility_score": utility_score,
+            "rejection_reason": rejection_reason,
+        })
+
+    return counterfactuals
 
 
 def decide_action(
@@ -179,6 +339,14 @@ def decide_action(
     )
     remaining = max(0, max_framework_attempts - failure.attempt_number)
 
+    # RBI AFA Check (>₹15,000 threshold notice)
+    afa_warning = None
+    if amount_inr > RBI_AFA_THRESHOLD_INR:
+        afa_warning = (
+            f"High-Value Mandate (₹{amount_inr:,.2f} > ₹{RBI_AFA_THRESHOLD_INR:,.0f}). "
+            "RBI Circular RBI/2023-24/90 requires Additional Factor of Authentication (AFA/OTP) per debit."
+        )
+
     # 1. HARD STOP (Revocation, Closed Account, or Attempt Exhaustion)
     if not retry_allowed and diagnosis.category != DeclineCategory.CARD_EXPIRED:
         template = None
@@ -194,6 +362,8 @@ def decide_action(
             template = f"Your recurring payment could not be processed after {max_framework_attempts} attempts. Please complete payment manually: {{{{payment_link}}}}"
             clause = f"NPCI/RBI Regulatory Framework ({max_framework_attempts}-Attempt Statutory Cap per Billing Cycle)"
             why = f"Attempt budget exhausted ({max_framework_attempts}/{max_framework_attempts} attempts used). Retrying further would violate regulatory debit attempt caps."
+
+        counterfactuals = evaluate_action_counterfactuals(failure, diagnosis, ActionType.HARD_STOP, amount_inr, remaining)
 
         return Decision(
             mandate_failure_id=failure.id,
@@ -214,10 +384,14 @@ def decide_action(
             policy_clause=clause,
             ev_calculation_breakdown=f"EV = (0.00 × ₹{amount_inr:.2f}) - ₹{ATTEMPT_COST_INR:.2f} = -₹{ATTEMPT_COST_INR:.2f} (Terminal Decline)",
             why_chosen=why,
+            counterfactuals=counterfactuals,
+            bank_holiday_delayed=False,
+            afa_warning=afa_warning,
         )
 
     # 2. SUGGEST METHOD SWITCH (Card Expired - 0 debit fee incurred)
     if diagnosis.category == DeclineCategory.CARD_EXPIRED:
+        counterfactuals = evaluate_action_counterfactuals(failure, diagnosis, ActionType.SUGGEST_METHOD_SWITCH, amount_inr, remaining)
         return Decision(
             mandate_failure_id=failure.id,
             action=ActionType.SUGGEST_METHOD_SWITCH,
@@ -236,11 +410,15 @@ def decide_action(
             is_safe=True,
             policy_clause="RBI Master Direction on Card Tokenisation (DPSS.CO.PD No.447/02.14.003/2019-20)",
             ev_calculation_breakdown=f"EV = (0.00 × ₹{amount_inr:.2f}) - ₹{ATTEMPT_COST_INR:.2f} = -₹{ATTEMPT_COST_INR:.2f} (Saved ₹{ATTEMPT_COST_INR:.2f} fee via Zero-Debit Switch)",
-            why_chosen="Saved card token has expired at issuer. Re-triggering the same card token fails 100% of the time. Switched to payment link dispatch.",
+            why_chosen="Saved card token has expired at issuer. Re-triggering the same card token fails 100% of the time. Switched to zero-debit payment link dispatch.",
+            counterfactuals=counterfactuals,
+            bank_holiday_delayed=False,
+            afa_warning=afa_warning,
         )
 
     # 3. ECONOMIC GUARD FOR RETRIES (Expected Value Check)
     if ev_inr <= 0 and diagnosis.category not in {DeclineCategory.NETWORK_GLITCH, DeclineCategory.GATEWAY_TIMEOUT}:
+        counterfactuals = evaluate_action_counterfactuals(failure, diagnosis, ActionType.HARD_STOP, amount_inr, remaining)
         return Decision(
             mandate_failure_id=failure.id,
             action=ActionType.HARD_STOP,
@@ -260,6 +438,9 @@ def decide_action(
             policy_clause="Merchant Profitability Guard & Economic Halting Policy (Zero-Waste ROI Rule)",
             ev_calculation_breakdown=f"EV = ({diagnosis.recoverability*100:.0f}% × ₹{amount_inr:.2f}) - ₹{ATTEMPT_COST_INR:.2f} = ₹{ev_inr:.2f} (Negative Margin)",
             why_chosen=f"Calculated expected return (₹{diagnosis.recoverability*amount_inr:.2f}) is lower than the gateway attempt fee (₹{ATTEMPT_COST_INR:.2f}). Retrying would incur a guaranteed net loss.",
+            counterfactuals=counterfactuals,
+            bank_holiday_delayed=False,
+            afa_warning=afa_warning,
         )
 
     # 4. SCHEDULE RETRY (Insufficient funds / Temporary Bank Glitch)
@@ -280,10 +461,14 @@ def decide_action(
                 sched = earliest_retry_at
                 was_clamped_to_24h = True
 
+        # Check Bank Holiday Adjustment
+        sched, bank_holiday_delayed = adjust_for_bank_holidays(sched)
+
         msg = f"Pre-debit Notice: Your recurring payment of Rs. {amount_inr:.2f} is scheduled for {sched.strftime('%d %b %Y')}. Ensure sufficient balance."
         
         notice_clause = " (statutory 24h pre-debit notice window enforced)" if was_clamped_to_24h else ""
-        rationale = f"Scheduled retry on {sched.strftime('%Y-%m-%d %H:%M UTC')}{notice_clause} with pre-debit notice window active. EV: Rs. {ev_inr:.2f}. {remaining} attempt(s) remaining."
+        holiday_clause = " [Shifted to next banking business day]" if bank_holiday_delayed else ""
+        rationale = f"Scheduled retry on {sched.strftime('%Y-%m-%d %H:%M UTC')}{notice_clause}{holiday_clause} with pre-debit notice window active. EV: Rs. {ev_inr:.2f}. {remaining} attempt(s) remaining."
 
         clause = (
             "RBI Circular DPSS.CO.PD No.447/02.14.003/2019-20 Sec 3(b) (Statutory 24h Pre-Debit Notice Window) & NPCI Off-Peak Batch Clearing Window (02:00-06:00 IST)"
@@ -291,6 +476,8 @@ def decide_action(
             else "RBI Circular DPSS.CO.PD No.447/02.14.003/2019-20 Sec 3(b) (Statutory 24h Pre-Debit Notice Window)"
         )
         roi_pct = round((ev_inr / amount_inr) * 100, 1) if amount_inr > 0 else 0
+
+        counterfactuals = evaluate_action_counterfactuals(failure, diagnosis, ActionType.SCHEDULE_RETRY, amount_inr, remaining)
 
         return Decision(
             mandate_failure_id=failure.id,
@@ -311,10 +498,14 @@ def decide_action(
             policy_clause=clause,
             ev_calculation_breakdown=f"EV = ({diagnosis.recoverability*100:.0f}% × ₹{amount_inr:.2f}) - ₹{ATTEMPT_COST_INR:.2f} = ₹{ev_inr:.2f} (+{roi_pct}% ROI)",
             why_chosen=f"Soft failure aligned with customer salary liquidity window. Clamped to statutory 24h pre-debit notice window with {remaining} attempt(s) remaining in budget.",
+            counterfactuals=counterfactuals,
+            bank_holiday_delayed=bank_holiday_delayed,
+            afa_warning=afa_warning,
         )
 
     # 5. IMMEDIATE RETRY (Network Glitch / Gateway Timeout)
     if diagnosis.recommended_action == ActionType.RETRY_NOW or diagnosis.category in {DeclineCategory.NETWORK_GLITCH, DeclineCategory.GATEWAY_TIMEOUT}:
+        counterfactuals = evaluate_action_counterfactuals(failure, diagnosis, ActionType.RETRY_NOW, amount_inr, remaining)
         return Decision(
             mandate_failure_id=failure.id,
             action=ActionType.RETRY_NOW,
@@ -334,9 +525,13 @@ def decide_action(
             policy_clause="NPCI Technical Error Handling Guidelines Sec 4 (Immediate Idempotent Re-query)",
             ev_calculation_breakdown=f"EV = ({diagnosis.recoverability*100:.0f}% × ₹{amount_inr:.2f}) - ₹{ATTEMPT_COST_INR:.2f} = ₹{ev_inr:.2f}",
             why_chosen=f"High-probability transient gateway glitch ({diagnosis.category.value}). Immediate retry is safe and cost-effective under active attempt budget.",
+            counterfactuals=counterfactuals,
+            bank_holiday_delayed=False,
+            afa_warning=afa_warning,
         )
 
     # 6. SOFT NOTIFY (Limit Exceeded / Auth Failure)
+    counterfactuals = evaluate_action_counterfactuals(failure, diagnosis, ActionType.SOFT_NOTIFY, amount_inr, remaining)
     return Decision(
         mandate_failure_id=failure.id,
         action=ActionType.SOFT_NOTIFY,
@@ -356,4 +551,7 @@ def decide_action(
         policy_clause="NPCI / RBI User Authentication & Limit Enhancement Policy",
         ev_calculation_breakdown=f"EV = ({diagnosis.recoverability*100:.0f}% × ₹{amount_inr:.2f}) - ₹0.00 = ₹{amount_inr*diagnosis.recoverability:.2f} (Zero-Debit Notification)",
         why_chosen="Decline requires customer-side MPIN/Limit re-configuration. Sending payment link saves a retry attempt while keeping customer informed.",
+        counterfactuals=counterfactuals,
+        bank_holiday_delayed=False,
+        afa_warning=afa_warning,
     )

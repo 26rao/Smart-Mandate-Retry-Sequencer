@@ -307,6 +307,109 @@ async def run_sensitivity(seeds: str = "42,101,777", count: int = 250):
     return await evaluator.run_sensitivity_analysis(seeds=seed_list, count=count)
 
 
+@app.get("/api/v1/sequencer/sensitivity/sweep")
+async def run_sensitivity_sweep(count: int = 250, seed: int = 42):
+    """Run parameter sweep across recoverability priors (-30% to +30%) to prove algorithmic lift stability."""
+    return await evaluator.run_parameter_sensitivity_sweep(count=count, seed=seed)
+
+
+@app.get("/api/v1/sequencer/adversarial")
+async def run_adversarial_benchmark(count: int = 250, seed: int = 999):
+    """Run stress benchmark on adversarial cohort (3x churn, revoked mandates, card expirations)."""
+    return await evaluator.run_adversarial_stress_test(count=count, seed=seed)
+
+
+@app.get("/api/v1/compliance/regulatory-matrix")
+async def get_regulatory_matrix():
+    """Primary-source mapping of all hard policy rules to NPCI and RBI regulatory circulars."""
+    return {
+        "frameworks": [
+            {
+                "framework": "NPCI UPI Autopay",
+                "authority": "National Payments Corporation of India (NPCI)",
+                "governing_circular": "NPCI/UPI/OC-97/2020-21 & Circular OC No. 122/2021-22",
+                "rules": [
+                    {
+                        "rule": "4-Attempt Hard Cap",
+                        "clause": "Sec 3.4 (Debit Execution Frequency)",
+                        "requirement": "Maximum 4 debit attempts permitted per mandate cycle (1 initial + 3 retries). Exceeding this triggers merchant penalty.",
+                        "enforcement": "Strict Deterministic Gate in policy.py (get_max_attempts_for_method)",
+                    },
+                    {
+                        "rule": "Mandatory 24h Pre-Debit Notification",
+                        "clause": "Sec 2.1 (Customer Advisory)",
+                        "requirement": "SMS/WhatsApp notification with amount, mandate ID, and debit date must be delivered at least 24 hours prior to execution.",
+                        "enforcement": "Statutory 24h floor enforced via earliest_retry_at clamping.",
+                    },
+                    {
+                        "rule": "Immediate Revocation Termination",
+                        "clause": "Sec 4.2 (Customer Revocation Rights)",
+                        "requirement": "Customer may pause or revoke mandate in UPI app at any time; merchant must halt retries with 0 further charges.",
+                        "enforcement": "Terminal 0-attempt hard lock on consent_withdrawn category.",
+                    },
+                    {
+                        "rule": "Off-Peak Window Batch Execution",
+                        "clause": "NPCI Recommended Best Practices for Recurring Processing",
+                        "requirement": "Batch debits must avoid 09:00 - 11:30 AM core banking peak clearing congestion.",
+                        "enforcement": "align_to_non_peak_window aligns retries to 03:30 UTC / 09:00 IST.",
+                    },
+                ],
+            },
+            {
+                "framework": "RBI E-Mandate on Cards & NetBanking",
+                "authority": "Reserve Bank of India (RBI)",
+                "governing_circular": "RBI/2019-20/47 DPSS.CO.PD.No.447/02.14.003/2019-20 & RBI/2023-24/90",
+                "rules": [
+                    {
+                        "rule": "3-Attempt Card Mandate Cap",
+                        "clause": "Sec 5.1 (Card Processing Rules)",
+                        "requirement": "Maximum 3 attempts permitted for tokenized card debits.",
+                        "enforcement": "Hard attempt cap at 3 for payment_method='card_recurring'.",
+                    },
+                    {
+                        "rule": "AFA Requirement for Transactions > ₹15,000",
+                        "clause": "RBI Circular RBI/2023-24/90 (AFA Exemption Thresholds)",
+                        "requirement": "Recurring transactions above ₹15,000 require Additional Factor of Authentication (AFA/OTP) per cycle unless insurance/MF.",
+                        "enforcement": "Automated afa_warning and soft method switch prompt.",
+                    },
+                    {
+                        "rule": "Card Token Expiry Zero-Debit Handling",
+                        "clause": "RBI CoF Tokenisation Guidelines (DPSS.CO.PD No.1198/02.14.003/2021-22)",
+                        "requirement": "Expired card tokens must not be repeatedly retried against payment gateway; method switch link must be provided.",
+                        "enforcement": "ActionType.SUGGEST_METHOD_SWITCH with 0 attempt cost.",
+                    },
+                    {
+                        "rule": "Indian Bank Holiday & Settlement Calendar Guard",
+                        "clause": "RBI RTGS/NEFT Clearing Holidays",
+                        "requirement": "Debits on RTGS/NEFT bank holidays and 2nd/4th Saturdays cause false technical declines.",
+                        "enforcement": "adjust_for_bank_holidays shifts retry forward to next open business day.",
+                    },
+                ],
+            },
+        ]
+    }
+
+
+@app.get("/api/v1/messaging/preview")
+async def preview_customer_messaging(
+    customer_id: str = "cust_demo_9821",
+    mandate_id: str = "order_test_mandate_01",
+    amount_inr: float = 3499.0,
+    decline_reason: str = "insufficient_funds",
+    scheduled_date: str = "28 Aug 2026",
+):
+    """Generate dynamic English & Hinglish notification copy and P2P promise-to-pay options."""
+    from app.services.messaging import generate_recovery_messages
+    return generate_recovery_messages(
+        customer_id=customer_id,
+        mandate_id=mandate_id,
+        amount_inr=amount_inr,
+        decline_reason=decline_reason,
+        action="schedule_retry",
+        scheduled_date_str=scheduled_date,
+    )
+
+
 @app.post("/api/v1/webhooks/razorpay")
 async def handle_razorpay_webhook(
     request: Request,
