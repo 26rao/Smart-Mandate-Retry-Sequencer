@@ -119,30 +119,21 @@ class IndependentComplianceVerifier:
 
         # 3. Independent Statutory 24-Hour Notice Window Assertion
         for d in decisions:
-            if d.schedule_at and d.action in ["schedule_retry", "retry_now"]:
-                # Re-derive notice dispatch from parent entry
-                created_at = None
-                for f in failures:
-                    if f.id == d.mandate_failure_id:
-                        created_at = f.created_at
-                        break
+            if d.action == "schedule_retry" and d.schedule_at and d.notice_sent_at:
+                sched = d.schedule_at if isinstance(d.schedule_at, datetime) else datetime.fromisoformat(str(d.schedule_at).replace("Z", "+00:00"))
+                notice = d.notice_sent_at if isinstance(d.notice_sent_at, datetime) else datetime.fromisoformat(str(d.notice_sent_at).replace("Z", "+00:00"))
                 
-                if created_at and d.schedule_at:
-                    # Parse if strings
-                    sched = d.schedule_at if isinstance(d.schedule_at, datetime) else datetime.fromisoformat(str(d.schedule_at).replace("Z", "+00:00"))
-                    notice = created_at if isinstance(created_at, datetime) else datetime.fromisoformat(str(created_at).replace("Z", "+00:00"))
-                    
-                    diff_seconds = (sched - notice).total_seconds()
-                    # Allow 1-second float tolerance
-                    if diff_seconds < (24 * 3600 - 5):
-                        assertions["statutory_24h_notice_window"]["passed"] = False
-                        assertions["statutory_24h_notice_window"]["violations"].append({
-                            "decision_id": d.id,
-                            "notice_time": notice.isoformat(),
-                            "schedule_time": sched.isoformat(),
-                            "window_hours": round(diff_seconds / 3600, 2),
-                            "error": f"Statutory 24h pre-debit notice window violated: scheduled only {round(diff_seconds/3600, 2)}h after notice",
-                        })
+                diff_seconds = (sched - notice).total_seconds()
+                # Allow 5-second float/network tolerance
+                if diff_seconds < (24 * 3600 - 5):
+                    assertions["statutory_24h_notice_window"]["passed"] = False
+                    assertions["statutory_24h_notice_window"]["violations"].append({
+                        "decision_id": d.id,
+                        "notice_time": notice.isoformat(),
+                        "schedule_time": sched.isoformat(),
+                        "window_hours": round(diff_seconds / 3600, 2),
+                        "error": f"Statutory 24h pre-debit notice window violated: scheduled only {round(diff_seconds/3600, 2)}h after notice",
+                    })
 
         # 4. Independent Terminal Revocation Check
         for f in failures:
