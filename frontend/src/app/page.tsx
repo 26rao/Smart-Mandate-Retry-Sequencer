@@ -500,8 +500,9 @@ export default function Home() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => startTransition(() => setActiveTab(tab.id as any))}
-                  className={`flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-xl border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
+                  type="button"
+                  onClick={() => setActiveTab(tab.id as any)}
+                  className={`flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-xl border-b-2 transition-all whitespace-nowrap flex-shrink-0 cursor-pointer active:scale-95 ${
                     isActive
                       ? "border-blue-500 text-blue-400 bg-blue-950/40 font-bold shadow-sm"
                       : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30"

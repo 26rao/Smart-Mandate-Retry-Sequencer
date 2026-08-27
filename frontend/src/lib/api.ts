@@ -260,7 +260,7 @@ async function fetchWithTimeout(url: string, options: RequestInit = {}, timeoutM
 
 export async function fetchHealth() {
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/health`, { cache: "no-store" }, 1500);
+    const res = await fetchWithTimeout(`${getApiBase()}/health`, { cache: "no-store" }, 2000);
     if (!res.ok) throw new Error("Backend offline");
     return res.json();
   } catch {
@@ -270,7 +270,7 @@ export async function fetchHealth() {
 
 export async function fetchRealPayloads(): Promise<RealErrorPayloadItem[]> {
   try {
-    const res = await fetchWithTimeout(`${API_BASE}/api/v1/payloads/real`, { cache: "no-store" }, 1500);
+    const res = await fetchWithTimeout(`${getApiBase()}/api/v1/payloads/real`, { cache: "no-store" }, 2000);
     if (!res.ok) throw new Error("Failed to load real error payloads");
     return res.json();
   } catch {
@@ -279,7 +279,7 @@ export async function fetchRealPayloads(): Promise<RealErrorPayloadItem[]> {
 }
 
 export async function processMandate(payload: any): Promise<ProcessResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/process`, {
+  const res = await fetch(`${getApiBase()}/api/v1/sequencer/process`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
@@ -292,7 +292,7 @@ export async function processMandate(payload: any): Promise<ProcessResponse> {
 }
 
 export async function runBenchmark(count: number = 250, seed: number = 42): Promise<BenchmarkResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/benchmark?count=${count}&seed=${seed}`, {
+  const res = await fetch(`${getApiBase()}/api/v1/sequencer/benchmark?count=${count}&seed=${seed}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Benchmark execution failed");
@@ -300,7 +300,7 @@ export async function runBenchmark(count: number = 250, seed: number = 42): Prom
 }
 
 export async function fetchSensitivitySweep(count: number = 250, seed: number = 42): Promise<SensitivitySweepResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/sensitivity/sweep?count=${count}&seed=${seed}`, {
+  const res = await fetch(`${getApiBase()}/api/v1/sequencer/sensitivity/sweep?count=${count}&seed=${seed}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Sensitivity sweep failed");
@@ -308,7 +308,7 @@ export async function fetchSensitivitySweep(count: number = 250, seed: number = 
 }
 
 export async function fetchAdversarialBenchmark(count: number = 250, seed: number = 999): Promise<BenchmarkResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/adversarial?count=${count}&seed=${seed}`, {
+  const res = await fetch(`${getApiBase()}/api/v1/sequencer/adversarial?count=${count}&seed=${seed}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Adversarial benchmark failed");
@@ -316,7 +316,7 @@ export async function fetchAdversarialBenchmark(count: number = 250, seed: numbe
 }
 
 export async function fetchSensitivityAnalysis(seeds: string = "42,101,777"): Promise<SensitivityResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/sensitivity?seeds=${seeds}`, {
+  const res = await fetch(`${getApiBase()}/api/v1/sequencer/sensitivity?seeds=${seeds}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Sensitivity analysis failed");
@@ -324,7 +324,7 @@ export async function fetchSensitivityAnalysis(seeds: string = "42,101,777"): Pr
 }
 
 export async function fetchIndependentAudit(limit: number = 250): Promise<IndependentAuditResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/compliance/independent-audit?limit=${limit}`, {
+  const res = await fetch(`${getApiBase()}/api/v1/compliance/independent-audit?limit=${limit}`, {
     cache: "no-store",
   });
   if (!res.ok) throw new Error("Independent audit failed");
@@ -332,7 +332,7 @@ export async function fetchIndependentAudit(limit: number = 250): Promise<Indepe
 }
 
 export async function fetchRegulatoryMatrix(): Promise<RegulatoryMatrixResponse> {
-  const res = await fetch(`${API_BASE}/api/v1/compliance/regulatory-matrix`, { cache: "no-store" });
+  const res = await fetch(`${getApiBase()}/api/v1/compliance/regulatory-matrix`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load regulatory matrix");
   return res.json();
 }
@@ -351,13 +351,13 @@ export async function fetchMessagingPreview(params?: {
   if (params?.decline_reason) q.set("decline_reason", params.decline_reason);
   if (params?.scheduled_date) q.set("scheduled_date", params.scheduled_date);
 
-  const res = await fetch(`${API_BASE}/api/v1/messaging/preview?${q.toString()}`, { cache: "no-store" });
+  const res = await fetch(`${getApiBase()}/api/v1/messaging/preview?${q.toString()}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load messaging preview");
   return res.json();
 }
 
 export async function createRazorpayTestOrder(amount: number, paymentId: string, mandateId: string) {
-  const res = await fetch(`${API_BASE}/api/v1/razorpay/test-order`, {
+  const res = await fetch(`${getApiBase()}/api/v1/razorpay/test-order`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ amount, payment_id: paymentId, mandate_id: mandateId }),
@@ -367,13 +367,13 @@ export async function createRazorpayTestOrder(amount: number, paymentId: string,
 }
 
 export async function fetchAuditLogs(limit: number = 40): Promise<AuditEntry[]> {
-  const res = await fetch(`${API_BASE}/api/v1/audit/logs?limit=${limit}`, { cache: "no-store" });
+  const res = await fetch(`${getApiBase()}/api/v1/audit/logs?limit=${limit}`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load audit logs");
   return res.json();
 }
 
 export async function verifyAuditChain() {
-  const res = await fetch(`${API_BASE}/api/v1/audit/verify`, { cache: "no-store" });
+  const res = await fetch(`${getApiBase()}/api/v1/audit/verify`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to verify audit chain");
   return res.json();
 }
@@ -383,7 +383,7 @@ export async function resolveEscalatedMandate(
   resolutionNotes: string,
   operatorId: string = "ops_analyst_01"
 ) {
-  const res = await fetch(`${API_BASE}/api/v1/ops/resolve`, {
+  const res = await fetch(`${getApiBase()}/api/v1/ops/resolve`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -397,11 +397,11 @@ export async function resolveEscalatedMandate(
 }
 
 export function getAuditExportUrl(format: string = "csv") {
-  return `${API_BASE}/api/v1/audit/export?format=${format}`;
+  return `${getApiBase()}/api/v1/audit/export?format=${format}`;
 }
 
 export async function fetchTaxonomy() {
-  const res = await fetch(`${API_BASE}/api/v1/sequencer/taxonomy`, { cache: "no-store" });
+  const res = await fetch(`${getApiBase()}/api/v1/sequencer/taxonomy`, { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to load taxonomy");
   return res.json();
 }
