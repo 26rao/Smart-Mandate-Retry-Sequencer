@@ -28,7 +28,6 @@ class IndependentComplianceVerifier:
         """
         Scan raw SQLite ledger records and execute strict, independent brute-force assertions.
         """
-        init_db_sync()
         with SyncSessionLocal() as session:
             entries = session.query(DBAuditEntry).order_by(DBAuditEntry.timestamp.asc()).all()
             decisions = session.query(DBDecision).all()
@@ -94,15 +93,16 @@ class IndependentComplianceVerifier:
         mandate_attempts: Dict[str, List[int]] = {}
         mandate_methods: Dict[str, str] = {}
         for f in failures:
-            mandate_methods[f.id] = getattr(f, "payment_method", "upi_autopay") or "upi_autopay"
+            mandate_methods[f.mandate_id] = getattr(f, "payment_method", "upi_autopay") or "upi_autopay"
             if f.mandate_id not in mandate_attempts:
                 mandate_attempts[f.mandate_id] = []
             mandate_attempts[f.mandate_id].append(f.attempt_number)
 
         for mandate_id, attempts in mandate_attempts.items():
             max_attempt = max(attempts)
-            # Default to UPI if unspecified
-            is_upi = any("upi" in mandate_methods.get(fid, "").lower() for fid in mandate_methods)
+            # Default to UPI if unspecified (O(1) lookup)
+            method = mandate_methods.get(mandate_id, "upi_autopay")
+            is_upi = "upi" in method.lower()
             
             if is_upi and max_attempt > 4:
                 assertions["npci_upi_attempt_cap"]["passed"] = False
