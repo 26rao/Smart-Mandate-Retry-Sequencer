@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageSquare, Smartphone, Mail, Globe, X, Check, Copy } from "lucide-react";
+import { MessageSquare, Smartphone, Mail, X, Check, Copy } from "lucide-react";
 import { MessagingPreviewResponse } from "@/lib/api";
 
 interface Props {
@@ -131,7 +131,7 @@ export const MessagingPreviewModal: React.FC<Props> = ({ isOpen, onClose, data }
                     key={bIdx}
                     className="text-xs bg-[#1f2c34] hover:bg-[#2a3942] border border-[#2a3942] text-cyan-300 font-medium px-3 py-1.5 rounded-full cursor-pointer transition-colors"
                   >
-                    ⚡ {btn}
+                    {btn}
                   </span>
                 ))}
               </div>
