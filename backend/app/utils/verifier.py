@@ -14,8 +14,8 @@ from datetime import datetime, timezone, timedelta
 from typing import Any, Dict, List, Optional
 import json
 import hashlib
-from app.database import SyncSessionLocal, init_db_sync
-from app.models import DBAuditEntry, DBMandateFailure, DBDecision
+from app.database import SyncSessionLocal, sync_engine
+from app.models import Base, DBAuditEntry, DBMandateFailure, DBDecision
 
 
 class IndependentComplianceVerifier:
@@ -28,6 +28,7 @@ class IndependentComplianceVerifier:
         """
         Scan raw SQLite ledger records and execute strict, independent brute-force assertions.
         """
+        Base.metadata.create_all(bind=sync_engine)
         with SyncSessionLocal() as session:
             entries = session.query(DBAuditEntry).order_by(DBAuditEntry.timestamp.asc()).all()
             decisions = session.query(DBDecision).all()
