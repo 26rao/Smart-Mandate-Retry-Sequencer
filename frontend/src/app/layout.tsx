@@ -1,9 +1,16 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Razorpay Smart Mandate Retry Sequencer",
   description: "AI-Powered, Deterministic Regulatory-Compliant Recurring Payment Recovery Engine",
+};
+
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  themeColor: "#070b14",
 };
 
 export default function RootLayout({

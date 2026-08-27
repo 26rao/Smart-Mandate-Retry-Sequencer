@@ -24,57 +24,57 @@ export const MessagingPreviewModal: React.FC<Props> = ({ isOpen, onClose, data }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#0e172a] border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-[#0e172a] border border-slate-700 rounded-2xl w-full max-w-2xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400">
-              <MessageSquare className="w-5 h-5" />
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex-shrink-0">
+              <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center space-x-2">
-                <span>Customer Recovery Notification & Promise-to-Pay</span>
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-base font-bold text-white truncate">
+                Customer Recovery Notification & P2P
               </h2>
-              <p className="text-xs text-slate-400">
-                High-converting, compliant multichannel messaging with bilingual Hindi/English copy
+              <p className="text-[10px] sm:text-xs text-slate-400 truncate">
+                Compliant multichannel messaging (Hinglish / English)
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Language & Channel Selectors */}
-        <div className="p-6 space-y-5 overflow-y-auto custom-scrollbar">
-          <div className="flex items-center justify-between gap-4 flex-wrap pb-2 border-b border-slate-800">
+        <div className="p-3.5 sm:p-6 space-y-4 overflow-y-auto custom-scrollbar">
+          <div className="flex items-center justify-between gap-2 flex-wrap pb-2 border-b border-slate-800">
             {/* Channel Tabs */}
-            <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs font-medium">
+            <div className="flex overflow-x-auto no-scrollbar bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs font-medium w-full sm:w-auto">
               <button
                 onClick={() => setChannel("whatsapp")}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex-1 sm:flex-initial justify-center ${
                   channel === "whatsapp" ? "bg-emerald-600 text-white font-bold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 <Smartphone className="w-3.5 h-3.5" />
-                <span>WhatsApp Interactive</span>
+                <span>WhatsApp</span>
               </button>
               <button
                 onClick={() => setChannel("sms")}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex-1 sm:flex-initial justify-center ${
                   channel === "sms" ? "bg-blue-600 text-white font-bold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
                 <MessageSquare className="w-3.5 h-3.5" />
-                <span>SMS (160c)</span>
+                <span>SMS</span>
               </button>
               <button
                 onClick={() => setChannel("email")}
-                className={`flex items-center space-x-1.5 px-3 py-1.5 rounded-lg transition-all ${
+                className={`flex items-center space-x-1.5 px-2.5 sm:px-3 py-1.5 rounded-lg transition-all whitespace-nowrap flex-1 sm:flex-initial justify-center ${
                   channel === "email" ? "bg-purple-600 text-white font-bold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
@@ -84,22 +84,22 @@ export const MessagingPreviewModal: React.FC<Props> = ({ isOpen, onClose, data }
             </div>
 
             {/* Language Switch */}
-            <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs">
+            <div className="flex items-center bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs w-full sm:w-auto justify-center">
               <button
                 onClick={() => setLang("hinglish")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all flex-1 sm:flex-initial text-center ${
                   lang === "hinglish" ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white font-bold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Conversational Hinglish
+                Hinglish
               </button>
               <button
                 onClick={() => setLang("english")}
-                className={`px-3 py-1.5 rounded-lg transition-all ${
+                className={`px-3 py-1.5 rounded-lg transition-all flex-1 sm:flex-initial text-center ${
                   lang === "english" ? "bg-slate-700 text-white font-bold" : "text-slate-400 hover:text-slate-200"
                 }`}
               >
-                Formal English
+                English
               </button>
             </div>
           </div>

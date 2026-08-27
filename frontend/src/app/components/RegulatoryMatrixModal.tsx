@@ -14,47 +14,47 @@ export const RegulatoryMatrixModal: React.FC<Props> = ({ isOpen, onClose, data }
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-[#0e172a] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
+      <div className="bg-[#0e172a] border border-slate-700 rounded-2xl w-full max-w-4xl max-h-[92vh] flex flex-col shadow-2xl overflow-hidden">
         {/* Header */}
-        <div className="px-6 py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
-          <div className="flex items-center space-x-3">
-            <div className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400">
-              <Scale className="w-5 h-5" />
+        <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-slate-800 flex items-center justify-between bg-slate-900/80">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="p-1.5 sm:p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-400 flex-shrink-0">
+              <Scale className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-white flex items-center space-x-2">
-                <span>Primary-Source Regulatory & Compliance Appendix</span>
-                <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
-                  NPCI & RBI Certified
+            <div className="min-w-0">
+              <h2 className="text-xs sm:text-base font-bold text-white flex items-center space-x-1.5 sm:space-x-2 truncate">
+                <span className="truncate">Regulatory & Compliance Appendix</span>
+                <span className="text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-300 border border-emerald-500/30 flex-shrink-0">
+                  Certified
                 </span>
               </h2>
-              <p className="text-xs text-slate-400">
-                Direct statutory mapping from policy code to official central bank & payments council circulars
+              <p className="text-[10px] sm:text-xs text-slate-400 truncate">
+                Statutory mapping to official central bank & payments council circulars
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors"
+            className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition-colors flex-shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto space-y-6 text-sm text-slate-300 custom-scrollbar">
+        <div className="p-3.5 sm:p-6 overflow-y-auto space-y-4 sm:space-y-6 text-sm text-slate-300 custom-scrollbar">
           {data?.frameworks?.map((fw, idx) => (
-            <div key={idx} className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4">
+            <div key={idx} className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-3 sm:space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-800 gap-2">
                 <div>
-                  <h3 className="font-bold text-white text-base flex items-center space-x-2">
+                  <h3 className="font-bold text-white text-sm sm:text-base flex items-center space-x-2">
                     <BookOpen className="w-4 h-4 text-blue-400" />
                     <span>{fw.framework}</span>
                   </h3>
                   <p className="text-xs text-slate-400">Authority: {fw.authority}</p>
                 </div>
-                <div className="text-xs font-mono bg-blue-950/60 border border-blue-800/60 text-blue-300 px-3 py-1 rounded-lg">
+                <div className="text-[11px] sm:text-xs font-mono bg-blue-950/60 border border-blue-800/60 text-blue-300 px-2.5 sm:px-3 py-1 rounded-lg self-start sm:self-auto">
                   {fw.governing_circular}
                 </div>
               </div>

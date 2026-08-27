@@ -439,32 +439,32 @@ export default function Home() {
     <div className="min-h-screen bg-[#070b14] text-slate-100 flex flex-col selection:bg-blue-600 selection:text-white font-sans">
       {/* Top Navbar */}
       <header className="border-b border-slate-800/80 bg-[#0c1322]/95 backdrop-blur-md sticky top-0 z-50 shadow-xl shadow-black/20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
-          <div className="flex items-center space-x-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-400 flex items-center justify-center font-black text-xl text-white shadow-lg shadow-blue-500/25 ring-1 ring-white/20 flex-shrink-0">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2">
+          <div className="flex items-center space-x-2.5 sm:space-x-3 min-w-0">
+            <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-tr from-blue-600 via-blue-500 to-cyan-400 flex items-center justify-center font-black text-lg sm:text-xl text-white shadow-lg shadow-blue-500/25 ring-1 ring-white/20 flex-shrink-0">
               R
             </div>
             <div className="min-w-0">
-              <div className="font-bold text-sm sm:text-base md:text-lg text-white flex items-center space-x-2 tracking-tight truncate">
-                <span className="truncate">Razorpay Smart Mandate Sequencer</span>
-                <span className="hidden sm:inline-block text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 flex-shrink-0">
+              <div className="font-bold text-xs sm:text-base md:text-lg text-white flex items-center space-x-1.5 sm:space-x-2 tracking-tight truncate">
+                <span className="truncate">Razorpay Smart Sequencer</span>
+                <span className="text-[9px] sm:text-[10px] uppercase font-mono px-1.5 sm:px-2 py-0.5 rounded-full bg-blue-500/15 text-blue-300 border border-blue-500/30 flex-shrink-0">
                   v1.4.0
                 </span>
               </div>
               <p className="text-[10px] sm:text-[11px] text-slate-400 font-medium truncate">
-                Deterministic Regulatory Gates • Agentic Action Planner • Zero-Trust Verifier
+                Deterministic Policy • Action Planner • Zero-Trust Verifier
               </p>
             </div>
           </div>
 
           {/* Unified Compact Status Ribbon & Regulatory Button */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 sm:space-x-3 flex-shrink-0">
             <button
               onClick={handleOpenRegulatoryMatrix}
-              className="flex items-center space-x-1.5 px-3 py-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 text-blue-300 hover:bg-blue-900/60 text-xs font-semibold transition-all shadow-inner"
+              className="flex items-center space-x-1 px-2.5 sm:px-3 py-1.5 rounded-full bg-blue-950/60 border border-blue-500/30 text-blue-300 hover:bg-blue-900/60 text-[11px] sm:text-xs font-semibold transition-all shadow-inner"
             >
               <Scale className="w-3.5 h-3.5 text-blue-400" />
-              <span className="hidden md:inline">Regulatory Matrix</span>
+              <span className="inline">Rules</span>
             </button>
 
             <div className="hidden lg:flex items-center space-x-2 bg-slate-900/90 border border-slate-800 px-3 py-1.5 rounded-full text-xs font-mono text-slate-300 shadow-inner flex-shrink-0">
@@ -486,9 +486,9 @@ export default function Home() {
           </div>
         </div>
 
-        {/* 4 Clean Tabs */}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex border-t border-slate-800/60 justify-start sm:justify-center">
-          <div className="grid grid-cols-4 w-full sm:w-auto sm:flex sm:space-x-2">
+        {/* 4 Clean Responsive Mobile-Scrollable Tabs */}
+        <div className="max-w-7xl mx-auto px-2 sm:px-6 lg:px-8 border-t border-slate-800/60">
+          <div className="flex overflow-x-auto no-scrollbar justify-start sm:justify-center space-x-1 sm:space-x-2 py-1">
             {[
               { id: "live", label: "Live Sequencer", icon: Zap },
               { id: "benchmark_inspector", label: "Benchmark & Rigor", icon: TrendingUp },
@@ -501,14 +501,14 @@ export default function Home() {
                 <button
                   key={tab.id}
                   onClick={() => startTransition(() => setActiveTab(tab.id as any))}
-                  className={`flex flex-col sm:flex-row items-center justify-center space-y-1 sm:space-y-0 sm:space-x-2 px-2 sm:px-5 py-3 text-xs sm:text-sm font-medium border-b-2 transition-all text-center ${
+                  className={`flex items-center space-x-1.5 sm:space-x-2 px-3 sm:px-5 py-2 sm:py-3 text-xs sm:text-sm font-medium rounded-xl border-b-2 transition-all whitespace-nowrap flex-shrink-0 ${
                     isActive
-                      ? "border-blue-500 text-blue-400 bg-blue-950/25 font-bold"
+                      ? "border-blue-500 text-blue-400 bg-blue-950/40 font-bold shadow-sm"
                       : "border-transparent text-slate-400 hover:text-slate-200 hover:bg-slate-800/30"
                   }`}
                 >
-                  <Icon className={`w-4 h-4 ${isActive ? "text-blue-400" : "text-slate-400"}`} />
-                  <span className="truncate">{tab.label}</span>
+                  <Icon className={`w-3.5 h-3.5 sm:w-4 sm:h-4 ${isActive ? "text-blue-400" : "text-slate-400"}`} />
+                  <span>{tab.label}</span>
                 </button>
               );
             })}
@@ -517,25 +517,25 @@ export default function Home() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-8">
+      <main className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 flex-1 w-full space-y-6 sm:space-y-8">
         {/* ================= TAB 1: LIVE SEQUENCER ================= */}
         {activeTab === "live" && (
           <div className="space-y-6 animate-fadeIn">
             {/* Top Description */}
-            <div className="bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-slate-900/40 border border-blue-900/40 rounded-2xl p-5 flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            <div className="bg-gradient-to-r from-blue-950/40 via-slate-900/60 to-slate-900/40 border border-blue-900/40 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3 sm:gap-4">
               <div className="space-y-1">
-                <h2 className="text-base sm:text-lg font-bold text-white flex items-center space-x-2">
-                  <Zap className="w-5 h-5 text-blue-400" />
+                <h2 className="text-sm sm:text-lg font-bold text-white flex items-center space-x-2">
+                  <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                   <span>Real-Time Mandate Recovery Sequencer</span>
                 </h2>
-                <p className="text-xs sm:text-sm text-slate-400">
+                <p className="text-[11px] sm:text-sm text-slate-400">
                   Select a live Razorpay decline signature or trigger dynamic Groq classification.
                 </p>
               </div>
-              <div className="flex items-center space-x-2">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
                 <button
                   onClick={handleOpenMessagingPreview}
-                  className="px-3.5 py-2 bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 text-emerald-300 font-semibold text-xs rounded-xl transition-colors flex items-center space-x-1.5"
+                  className="px-3.5 py-2.5 sm:py-2 bg-emerald-600/20 border border-emerald-500/40 hover:bg-emerald-600/30 text-emerald-300 font-semibold text-xs rounded-xl transition-colors flex items-center justify-center space-x-1.5"
                 >
                   <MessageSquare className="w-4 h-4" />
                   <span>Hinglish & P2P Preview</span>
@@ -543,7 +543,7 @@ export default function Home() {
                 <button
                   onClick={handleRunSequencer}
                   disabled={isProcessing}
-                  className="px-5 py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-500/20 flex items-center space-x-2 transition-all disabled:opacity-50"
+                  className="px-5 py-2.5 sm:py-2 bg-gradient-to-r from-blue-600 to-cyan-500 hover:from-blue-500 hover:to-cyan-400 text-white font-bold text-xs sm:text-sm rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
                 >
                   {isProcessing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                   <span>{isProcessing ? "Executing Sequencer..." : "Run Sequencer FSM"}</span>
@@ -552,14 +552,14 @@ export default function Home() {
             </div>
 
             {/* Error Payload Selector Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-2.5 sm:gap-3">
               {realPayloads.map((item) => {
                 const isSelected = selectedPayloadId === item.id;
                 return (
                   <button
                     key={item.id}
                     onClick={() => handleSelectPayload(item.id)}
-                    className={`p-3.5 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                    className={`p-3 sm:p-3.5 rounded-xl text-left border transition-all flex flex-col justify-between ${
                       isSelected
                         ? "bg-blue-950/50 border-blue-500 ring-2 ring-blue-500/30 shadow-lg"
                         : "bg-slate-900/70 border-slate-800 hover:border-slate-700 hover:bg-slate-800/40"
@@ -694,18 +694,18 @@ export default function Home() {
         {/* ================= TAB 2: BENCHMARK & EVALUATION RIGOR ================= */}
         {activeTab === "benchmark_inspector" && (
           <div className="space-y-6 animate-fadeIn">
-            {/* Sub-Tabs */}
-            <div className="flex border-b border-slate-800 space-x-4">
+            {/* Responsive Horizontal Scrollable Sub-Tabs */}
+            <div className="flex overflow-x-auto no-scrollbar space-x-2 sm:space-x-4 border-b border-slate-800 pb-1 whitespace-nowrap">
               {[
-                { id: "benchmark", label: "Dual-Baseline & Oracle Benchmark" },
-                { id: "sensitivity", label: "Prior Sensitivity Sweep (±30%)" },
-                { id: "adversarial", label: "Adversarial Stress Test (#999)" },
+                { id: "benchmark", label: "Dual-Baseline & Oracle" },
+                { id: "sensitivity", label: "Prior Sensitivity (±30%)" },
+                { id: "adversarial", label: "Adversarial Stress (#999)" },
                 { id: "inspector", label: "Custom JSON Inspector" },
               ].map((sub) => (
                 <button
                   key={sub.id}
                   onClick={() => setBenchmarkSubTab(sub.id as any)}
-                  className={`pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-all ${
+                  className={`pb-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex-shrink-0 px-1 ${
                     benchmarkSubTab === sub.id
                       ? "border-blue-500 text-blue-400 font-bold"
                       : "border-transparent text-slate-400 hover:text-slate-200"
@@ -719,9 +719,9 @@ export default function Home() {
             {/* Sub-Tab 1: Dual Baselines + Oracle Benchmark */}
             {benchmarkSubTab === "benchmark" && (
               <div className="space-y-6">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/90 border border-slate-800 rounded-xl p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5">
                   <div>
-                    <h3 className="font-bold text-white text-base">
+                    <h3 className="font-bold text-white text-sm sm:text-base">
                       Comparative Recovery Benchmark Across 250 Held-Out Mandates
                     </h3>
                     <p className="text-xs text-slate-400">
@@ -731,7 +731,7 @@ export default function Home() {
                   <button
                     onClick={handleRunBenchmark}
                     disabled={isBenchmarking}
-                    className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 flex items-center space-x-2 transition-all disabled:opacity-50 self-start sm:self-auto"
+                    className="px-4 sm:px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-blue-500/20 flex items-center justify-center space-x-2 transition-all disabled:opacity-50 w-full sm:w-auto"
                   >
                     {isBenchmarking ? <RefreshCw className="w-4 h-4 animate-spin" /> : <TrendingUp className="w-4 h-4" />}
                     <span>{isBenchmarking ? "Running Benchmark..." : "Run 250-Mandate Benchmark"}</span>
@@ -741,8 +741,8 @@ export default function Home() {
                 {benchmarkData ? (
                   <DualBaselineBenchmarkCard benchmark={benchmarkData} />
                 ) : (
-                  <div className="bg-slate-900/60 border border-slate-800 border-dashed rounded-xl p-12 text-center space-y-3">
-                    <BarChart3 className="w-10 h-10 text-slate-600 mx-auto" />
+                  <div className="bg-slate-900/60 border border-slate-800 border-dashed rounded-xl p-8 sm:p-12 text-center space-y-3">
+                    <BarChart3 className="w-8 h-8 sm:w-10 sm:h-10 text-slate-600 mx-auto" />
                     <p className="text-xs text-slate-400">Click &quot;Run 250-Mandate Benchmark&quot; to execute the evaluation.</p>
                   </div>
                 )}
@@ -769,13 +769,13 @@ export default function Home() {
 
             {/* Sub-Tab 4: Custom JSON Inspector */}
             {benchmarkSubTab === "inspector" && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-3">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-3">
                   <h4 className="font-bold text-white text-sm">Custom Failure JSON Input</h4>
                   <textarea
                     value={customJsonInput}
                     onChange={(e) => setCustomJsonInput(e.target.value)}
-                    rows={12}
+                    rows={10}
                     className="w-full bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-200 focus:outline-none focus:border-blue-500"
                   />
                   <button
@@ -787,9 +787,9 @@ export default function Home() {
                   </button>
                 </div>
 
-                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-3">
+                <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-3">
                   <h4 className="font-bold text-white text-sm">Inspector Output</h4>
-                  <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 max-h-96 overflow-auto custom-scrollbar">
+                  <pre className="bg-slate-950 border border-slate-800 rounded-lg p-3 text-xs font-mono text-slate-300 max-h-80 sm:max-h-96 overflow-auto custom-scrollbar">
                     {customJsonResult ? JSON.stringify(customJsonResult, null, 2) : "// Run custom payload to see output"}
                   </pre>
                 </div>
@@ -802,7 +802,7 @@ export default function Home() {
         {activeTab === "compliance" && (
           <div className="space-y-6 animate-fadeIn">
             {/* Sub-Tabs */}
-            <div className="flex border-b border-slate-800 space-x-4">
+            <div className="flex overflow-x-auto no-scrollbar space-x-2 sm:space-x-4 border-b border-slate-800 pb-1 whitespace-nowrap">
               {[
                 { id: "independent_audit", label: "Zero-Trust Verifier" },
                 { id: "ledger", label: "SHA-256 Merkle Ledger" },
@@ -811,7 +811,7 @@ export default function Home() {
                 <button
                   key={sub.id}
                   onClick={() => setComplianceSubTab(sub.id as any)}
-                  className={`pb-3 text-xs sm:text-sm font-semibold border-b-2 transition-all ${
+                  className={`pb-2.5 text-xs sm:text-sm font-semibold border-b-2 transition-all whitespace-nowrap flex-shrink-0 px-1 ${
                     complianceSubTab === sub.id
                       ? "border-blue-500 text-blue-400 font-bold"
                       : "border-transparent text-slate-400 hover:text-slate-200"
@@ -825,10 +825,10 @@ export default function Home() {
             {/* Zero-Trust Verifier */}
             {complianceSubTab === "independent_audit" && (
               <div className="space-y-5">
-                <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-xl p-5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5">
                   <div>
-                    <h3 className="font-bold text-white text-base flex items-center space-x-2">
-                      <ShieldCheck className="w-5 h-5 text-emerald-400" />
+                    <h3 className="font-bold text-white text-sm sm:text-base flex items-center space-x-2">
+                      <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-400" />
                       <span>Zero-Trust Independent Compliance Verifier</span>
                     </h3>
                     <p className="text-xs text-slate-400">
@@ -838,14 +838,14 @@ export default function Home() {
                   <button
                     onClick={handleRunIndependentAudit}
                     disabled={isAuditing}
-                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20"
+                    className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl shadow-lg shadow-emerald-500/20 w-full sm:w-auto"
                   >
                     {isAuditing ? "Auditing..." : "Re-run Zero-Trust Audit"}
                   </button>
                 </div>
 
                 {independentAudit?.assertions && (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
                     {Object.entries(independentAudit.assertions)
                       .filter(([_, item]: any) => item && typeof item === "object" && "passed" in item)
                       .map(([key, item]: any) => (
@@ -871,7 +871,7 @@ export default function Home() {
             {/* SHA-256 Merkle Ledger */}
             {complianceSubTab === "ledger" && (
               <div className="space-y-4">
-                <div className="flex items-center justify-between bg-slate-900/90 border border-slate-800 rounded-xl p-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 bg-slate-900/90 border border-slate-800 rounded-xl p-4">
                   <div>
                     <h4 className="font-bold text-white text-sm">Cryptographic Audit Ledger</h4>
                     <p className="text-xs text-slate-400">Immutable SHA-256 forward-linked block history</p>
@@ -904,7 +904,7 @@ export default function Home() {
                 )}
 
                 <div className="bg-slate-900/90 border border-slate-800 rounded-xl overflow-x-auto">
-                  <table className="w-full text-xs text-left">
+                  <table className="w-full text-xs text-left min-w-[500px]">
                     <thead className="bg-slate-950 text-slate-400 uppercase font-mono text-[10px] border-b border-slate-800">
                       <tr>
                         <th className="px-4 py-3">Timestamp (UTC)</th>
@@ -932,21 +932,21 @@ export default function Home() {
 
             {/* Taxonomy */}
             {complianceSubTab === "taxonomy" && (
-              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4">
-                <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
                   <h4 className="font-bold text-white text-sm">Official Razorpay Error Code Taxonomy (50+ Patterns)</h4>
                   <input
                     type="text"
                     placeholder="Search error code or reason..."
                     value={taxonomySearch}
                     onChange={(e) => setTaxonomySearch(e.target.value)}
-                    className="bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500 w-64"
+                    className="bg-slate-950 border border-slate-800 text-xs text-slate-200 px-3 py-1.5 rounded-lg focus:outline-none focus:border-blue-500 w-full sm:w-64"
                   />
                 </div>
 
                 {taxonomyData && (
                   <div className="overflow-x-auto max-h-96 custom-scrollbar">
-                    <table className="w-full text-xs text-left">
+                    <table className="w-full text-xs text-left min-w-[500px]">
                       <thead className="bg-slate-950 text-slate-400 uppercase font-mono text-[10px]">
                         <tr>
                           <th className="px-3 py-2">Error Signature</th>
@@ -978,9 +978,9 @@ export default function Home() {
         {/* ================= TAB 4: OPS QUEUE ================= */}
         {activeTab === "ops" && (
           <div className="space-y-6 animate-fadeIn">
-            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-5 space-y-4">
-              <h3 className="font-bold text-white text-base flex items-center space-x-2">
-                <UserCheck className="w-5 h-5 text-blue-400" />
+            <div className="bg-slate-900/90 border border-slate-800 rounded-xl p-4 sm:p-5 space-y-4">
+              <h3 className="font-bold text-white text-sm sm:text-base flex items-center space-x-2">
+                <UserCheck className="w-4 h-4 sm:w-5 sm:h-5 text-blue-400" />
                 <span>Merchant Operations Triage & Resolution Queue</span>
               </h3>
               <p className="text-xs text-slate-400">
@@ -1004,7 +1004,7 @@ export default function Home() {
                 <button
                   onClick={() => handleOpsResolve("mf_real_001")}
                   disabled={resolvingId !== null}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition-all disabled:opacity-50"
+                  className="w-full sm:w-auto px-4 py-2.5 bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs rounded-lg transition-all disabled:opacity-50"
                 >
                   {resolvingId ? "Resolving..." : "Mark Mandate Resolved (Cryptographic Audit Commit)"}
                 </button>
